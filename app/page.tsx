@@ -11,6 +11,7 @@ import type {
 } from "@/types/game";
 import { makeSessionId } from "@/lib/utils";
 import { MOCK_EXAMINER, MOCK_TASKS } from "@/lib/mockData";
+import { applyEffortFloor } from "@/lib/mockJudge";
 import { saveSession } from "@/lib/storage";
 import { TerminalShell } from "@/components/TerminalShell";
 import { Bgm } from "@/components/Bgm";
@@ -134,7 +135,8 @@ export default function Page() {
         isMock: true,
       };
 
-      const base = payload ?? fallback;
+      const raw = payload ?? fallback;
+      const base = { ...raw, ...applyEffortFloor(raw, texts), isMock: raw.isMock };
       const built: GameResult = {
         ...base,
         sessionId: sessionId ?? makeSessionId(),

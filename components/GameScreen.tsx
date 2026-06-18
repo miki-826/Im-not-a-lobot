@@ -38,6 +38,7 @@ export function GameScreen({
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const recRef = useRef<SpeechRec | null>(null);
+  const autoRanRef = useRef(false);
 
   const [index, setIndex] = useState(0);
   const [text, setText] = useState("");
@@ -82,17 +83,13 @@ export function GameScreen({
     onSnapshot(url);
   };
 
-  const toggleSpeech = () => {
+  const startSpeech = () => {
     const w = window as unknown as {
       SpeechRecognition?: new () => SpeechRec;
       webkitSpeechRecognition?: new () => SpeechRec;
     };
     const Ctor = w.SpeechRecognition || w.webkitSpeechRecognition;
-    if (!Ctor) return;
-    if (listening) {
-      recRef.current?.stop();
-      return;
-    }
+    if (!Ctor || listening) return;
     const rec = new Ctor();
     rec.lang = "ja-JP";
     rec.continuous = true;
@@ -107,9 +104,47 @@ export function GameScreen({
     rec.onend = () => setListening(false);
     rec.onerror = () => setListening(false);
     recRef.current = rec;
-    rec.start();
-    setListening(true);
+    try {
+      rec.start();
+      setListening(true);
+    } catch {
+      /* already started */
+    }
   };
+
+  const toggleSpeech = () => {
+    if (listening) {
+      recRef.current?.stop();
+      return;
+    }
+    startSpeech();
+  };
+
+  // 第1認証では音声入力と撮影を自動で開始する
+  useEffect(() => {
+    if (index !== 0 || autoRanRef.current) return;
+    autoRanRef.current = true;
+
+    if (hasCamera && stream) {
+      let tries = 0;
+      const id = setInterval(() => {
+        tries += 1;
+        const v = videoRef.current;
+        if (v && v.videoWidth) {
+          takeSnapshot();
+          clearInterval(id);
+        } else if (tries > 25) {
+          clearInterval(id);
+        }
+      }, 200);
+    }
+
+    if (hasMic) {
+      const t = setTimeout(() => startSpeech(), 700);
+      return () => clearTimeout(t);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [index, hasCamera, hasMic, stream]);
 
   const goNext = async () => {
     if (submitting) return;
@@ -185,6 +220,15 @@ export function GameScreen({
           ))}
         </div>
       </div>
+
+      {index === 0 && (hasCamera || hasMic) && (
+        <div className="mb-3 flex items-center gap-2 rounded-sm border border-[var(--accent)]/30 bg-[var(--accent)]/5 px-3 py-2 font-mono text-[11px] text-[var(--accent)]">
+          <span className="lamp lamp-blink text-[var(--accent)]" style={{ background: "currentColor" }} />
+          第1認証は{hasCamera ? "自動で撮影" : ""}
+          {hasCamera && hasMic ? "・" : ""}
+          {hasMic ? "音声入力を自動開始" : ""}しました。話すと入力欄に反映されます。
+        </div>
+      )}
 
       <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
         {/* left: camera */}

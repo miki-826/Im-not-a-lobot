@@ -9,6 +9,11 @@ export function countAny(text: string, words: string[]) {
   return words.filter((word) => text.includes(word)).length;
 }
 
+/** 有効な回答（音声/テキスト）が十分にあるか。無回答の素通りを弾く */
+export function hasRealEffort(texts: string[]) {
+  return texts.join("").replace(/\s+/g, "").length >= 10;
+}
+
 export function rankFromScore(score: number): Rank {
   if (score >= 90) return "S";
   if (score >= 80) return "A";

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { HAS_OPENAI, chatJSON } from "@/lib/openai";
-import { judgeMock } from "@/lib/mockJudge";
+import { judgeMock, applyEffortFloor } from "@/lib/mockJudge";
 import { RANK_TITLE, clampScore, rankFromScore } from "@/lib/score";
 import { clip } from "@/lib/utils";
 import type { Rank } from "@/types/game";
@@ -41,22 +41,26 @@ export async function POST(req: Request) {
         const rank = (["S", "A", "B", "C", "D"].includes(d.rank as string)
           ? d.rank
           : rankFromScore(humanScore)) as Rank;
-        return NextResponse.json({
-          humanScore,
-          aiSuspicion: typeof d.aiSuspicion === "number" ? clampScore(d.aiSuspicion as number) : 100 - humanScore,
-          rank,
-          approved: humanScore >= 70,
-          humanType: (d.humanType as string) || RANK_TITLE[rank],
-          goodPoints: Array.isArray(d.goodPoints) ? (d.goodPoints as string[]) : [],
-          aiLikePoints: Array.isArray(d.aiLikePoints) ? (d.aiLikePoints as string[]) : [],
-          examinerComment: (d.examinerComment as string) || "",
-          afterStory: (d.afterStory as string) || "",
-          isMock: false,
-        });
+        const live = applyEffortFloor(
+          {
+            humanScore,
+            aiSuspicion:
+              typeof d.aiSuspicion === "number" ? clampScore(d.aiSuspicion as number) : 100 - humanScore,
+            rank,
+            approved: humanScore >= 70,
+            humanType: (d.humanType as string) || RANK_TITLE[rank],
+            goodPoints: Array.isArray(d.goodPoints) ? (d.goodPoints as string[]) : [],
+            aiLikePoints: Array.isArray(d.aiLikePoints) ? (d.aiLikePoints as string[]) : [],
+            examinerComment: (d.examinerComment as string) || "",
+            afterStory: (d.afterStory as string) || "",
+          },
+          input.texts
+        );
+        return NextResponse.json({ ...live, isMock: false });
       }
     }
   }
 
-  const result = judgeMock(input);
+  const result = applyEffortFloor(judgeMock(input), input.texts);
   return NextResponse.json({ ...result, isMock: true });
 }

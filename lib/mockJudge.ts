@@ -1,6 +1,6 @@
 import type { GameResult } from "@/types/game";
 import { AFTER_STORY, EXAMINER_FLAVOR_COMMENTS, KEYWORDS, MOCK_TASK_COMMENTS } from "./mockData";
-import { clampScore, countAny, pickHumanType, rankFromScore } from "./score";
+import { clampScore, countAny, hasRealEffort, pickHumanType, rankFromScore } from "./score";
 
 export type JudgeInput = {
   texts: string[];
@@ -10,15 +10,38 @@ export type JudgeInput = {
   completedTaskCount: number;
 };
 
-export function judgeMock(input: JudgeInput): Omit<GameResult, "sessionId" | "isMock" | "createdAt"> {
-  const allText = input.texts.join(" ");
+type JudgeResult = Omit<GameResult, "sessionId" | "isMock" | "createdAt">;
+
+/**
+ * 無回答（音声もテキストも実質ゼロ）のまま素通りした場合は入国許可させない。
+ * Mock/LIVE 双方の結果に最後に適用する共通フロア。
+ */
+export function applyEffortFloor(result: JudgeResult, texts: string[]): JudgeResult {
+  if (hasRealEffort(texts)) return result;
+  const capped = Math.min(result.humanScore, 38);
+  return {
+    ...result,
+    humanScore: capped,
+    aiSuspicion: 100 - capped,
+    rank: rankFromScore(capped),
+    approved: false,
+    aiLikePoints: ["有効な回答がほとんど検出されませんでした", ...result.aiLikePoints].slice(0, 3),
+    examinerComment: "回答がほとんどありません。人間なら、何か一言は言い残すはずです。再申請してください。",
+    afterStory: AFTER_STORY.rejected,
+  };
+}
+
+export function judgeMock(input: JudgeInput): JudgeResult {
+  const perTask = input.texts.map((t) => (t ?? "").trim());
+  const allText = perTask.join(" ");
+  const tasksWithText = perTask.filter((t) => t.length >= 5).length;
   let score = 0;
 
-  score += input.completedTaskCount * 15;
-  if (input.hasCamera) score += 10;
-  if (input.hasSnapshot) score += 5;
-  if (input.hasMic) score += 5;
-  if (allText.trim().length > 0) score += 10;
+  // 基礎点は「実際に回答したタスク数」に紐づける（素通りでは加点しない）
+  score += tasksWithText * 14;
+  if (input.hasCamera) score += 8;
+  if (input.hasSnapshot) score += 6;
+  if (input.hasMic) score += 4;
 
   const humanHits = countAny(allText, KEYWORDS.humanLike);
   const aiHits = countAny(allText, KEYWORDS.aiLike);
