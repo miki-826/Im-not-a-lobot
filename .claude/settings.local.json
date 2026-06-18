@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell($u=[Environment]::GetEnvironmentVariable\\('OPENAI_API_KEY','User'\\); if\\($u -and $u.StartsWith\\('sk-'\\)\\){ $env:OPENAI_API_KEY=$u }; Write-Output \"key prefix: $\\($env:OPENAI_API_KEY.Substring\\(0,7\\)\\)\"; node gen-all.mjs)",
+      "PowerShell(npm install --no-audit --no-fund 2>&1)",
+      "mcp__Claude_Preview__preview_start",
+      "PowerShell($u=[Environment]::GetEnvironmentVariable\\('OPENAI_API_KEY','User'\\); if\\($u -and $u.StartsWith\\('sk-'\\)\\){ $env:OPENAI_API_KEY=$u }; node gen-howto.mjs)",
+      "PowerShell(git --version; Write-Output \"---\"; git -C \"C:\\\\Users\\\\micke\\\\OneDrive\\\\Desktop\\\\claude専用ファイル\\\\Im not a lobot\" rev-parse --is-inside-work-tree 2>$null; Write-Output \"exit:$LASTEXITCODE\")"
+    ]
+  }
+}
