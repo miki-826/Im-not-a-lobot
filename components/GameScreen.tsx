@@ -97,7 +97,7 @@ export function GameScreen({
     const live = meterRef.current?.liveState();
     return {
       textLen: t.length,
-      listening,
+      micActive: hasMic && !!meterRef.current,
       volume: live?.volume ?? 0,
       speaking: live?.speaking ?? false,
       humanHits: countAny(t, KEYWORDS.humanLike),

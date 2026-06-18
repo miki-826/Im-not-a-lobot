@@ -157,15 +157,23 @@ export function ResultScreen({
         </div>
       </Panel>
 
-      {/* voice analysis */}
+      {/* human noise analysis */}
       {result.voiceMetrics && result.voiceMetrics.spoke && (
-        <Panel className="mt-4">
-          <SectionLabel>音声解析 / VOICE ANALYSIS</SectionLabel>
-          <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
-            <VoiceStat label="平均音量" value={`${result.voiceMetrics.avgVolume}%`} />
+        <Panel className="mt-4" bracketed>
+          <div className="flex items-center justify-between">
+            <SectionLabel>人間ノイズ解析 / HUMAN NOISE ANALYSIS</SectionLabel>
+            <span className="flex items-center gap-1 font-mono text-[9px] text-[var(--accent)]/70">
+              <span className="lamp text-[var(--accent)]" style={{ background: "currentColor" }} />
+              VOICE
+            </span>
+          </div>
+          <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
             <VoiceStat label="声の揺れ" value={`${result.voiceMetrics.volumeVariation}%`} />
+            <VoiceStat label="最大感情音量" value={`${result.voiceMetrics.peakVolume}%`} />
+            <VoiceStat label="平均音量" value={`${result.voiceMetrics.avgVolume}%`} />
+            <VoiceStat label="沈黙率" value={`${result.voiceMetrics.silenceRatio}%`} />
             <VoiceStat
-              label="話し始め"
+              label="話し始めの迷い"
               value={
                 result.voiceMetrics.firstSpeechDelayMs >= 0
                   ? `${(result.voiceMetrics.firstSpeechDelayMs / 1000).toFixed(1)}s`
@@ -179,7 +187,7 @@ export function ResultScreen({
             />
           </div>
           <p className="mt-2 font-mono text-[11px] text-[var(--sub)]">
-            ※ マイク音声はブラウザ内で特徴量だけ計測し、録音は保存していません。
+            ※ マイク音声はブラウザ内で特徴量だけ計測し、録音・音声データは保存していません。
           </p>
         </Panel>
       )}

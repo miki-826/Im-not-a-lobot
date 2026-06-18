@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 
 export type LiveLogState = {
   textLen: number;
-  listening: boolean;
+  micActive: boolean; // マイク計測が動作中か（音声認識の有無とは別）
   volume: number; // 0-100 live
   speaking: boolean;
   humanHits: number;
@@ -45,9 +45,9 @@ export function HumannessLog({
       const s = stateRef.current();
       const k = tickRef.current++;
 
-      // 沈黙の蓄積（マイク使用時のみ意味を持つ）
-      if (s.listening && !s.speaking) silenceRef.current += 0.9;
-      const silenceHit = s.listening && s.speaking && silenceRef.current >= 1.4;
+      // 沈黙の蓄積（マイク計測中のみ意味を持つ）
+      if (s.micActive && !s.speaking) silenceRef.current += 0.9;
+      const silenceHit = s.micActive && s.speaking && silenceRef.current >= 1.4;
       const silenceSec = silenceRef.current.toFixed(1);
       if (s.speaking) silenceRef.current = 0;
 
@@ -61,7 +61,7 @@ export function HumannessLog({
         const cat = k % 5;
         if (cat === 0) line = `表情ノイズ検出中... [${bar(38 + ((k * 17) % 50))}]`;
         else if (cat === 1)
-          line = s.listening
+          line = s.micActive
             ? `音声レベル ${String(s.volume).padStart(2, " ")}%  [${bar(s.volume)}] ${s.speaking ? "発話検出" : "無音"}`
             : `音声入力：未使用（テキスト解析モード）`;
         else if (cat === 2) line = `愚痴密度：${density}%  ${density > 50 ? "良好" : "探索中"}`;

@@ -45,6 +45,8 @@ export class VoiceMeter {
       this.analyser.fftSize = 1024;
       this.buf = new Uint8Array(new ArrayBuffer(this.analyser.fftSize));
       this.source.connect(this.analyser);
+      // ユーザー操作後でもsuspendedのことがあるので明示的にresume
+      if (this.ctx.state === "suspended") this.ctx.resume().catch(() => {});
       this.reset();
       this.tick();
     } catch {
