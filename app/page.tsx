@@ -8,6 +8,7 @@ import type {
   PermissionState,
   Task,
   TaskAnswer,
+  VoiceMetrics,
 } from "@/types/game";
 import { makeSessionId } from "@/lib/utils";
 import { MOCK_EXAMINER, MOCK_TASKS } from "@/lib/mockData";
@@ -96,7 +97,7 @@ export default function Page() {
   );
 
   const handleComplete = useCallback(
-    async (finalAnswers: TaskAnswer[]) => {
+    async (finalAnswers: TaskAnswer[], voiceMetrics: VoiceMetrics) => {
       setAnswers(finalAnswers);
       stopStream();
       setPhase("analyzing");
@@ -114,6 +115,7 @@ export default function Page() {
             hasSnapshot: !!snapshot,
             hasMic: permission.mic === "granted",
             completedTaskCount: finalAnswers.length,
+            voiceMetrics,
           }),
         });
         const data = await res.json();
@@ -139,6 +141,7 @@ export default function Page() {
       const base = { ...raw, ...applyEffortFloor(raw, texts), isMock: raw.isMock };
       const built: GameResult = {
         ...base,
+        voiceMetrics: voiceMetrics.spoke ? voiceMetrics : base.voiceMetrics,
         sessionId: sessionId ?? makeSessionId(),
         createdAt: new Date().toISOString(),
         taskSummaries: finalAnswers.map((a, i) => ({

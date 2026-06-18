@@ -33,6 +33,16 @@ export type TaskAnswer = {
 
 export type Rank = "S" | "A" | "B" | "C" | "D";
 
+export type VoiceMetrics = {
+  avgVolume: number; // 0-100
+  peakVolume: number; // 0-100
+  silenceRatio: number; // 0-100（無音だった割合）
+  firstSpeechDelayMs: number; // 話し始めまでの遅延（-1=発話なし）
+  volumeVariation: number; // 0-100（声の揺れ）
+  shout: boolean; // 叫び判定
+  spoke: boolean; // 実際に声が検出されたか
+};
+
 export type GameResult = {
   sessionId: string;
   humanScore: number;
@@ -44,6 +54,8 @@ export type GameResult = {
   aiLikePoints: string[];
   examinerComment: string;
   afterStory: string;
+  rejectionReasons?: string[];
+  voiceMetrics?: VoiceMetrics;
   isMock: boolean;
   createdAt: string;
   taskSummaries?: { taskId: string; title: string; partialScore: number }[];

@@ -30,7 +30,8 @@ export function TimerBar({
           clearInterval(id);
           if (!firedRef.current) {
             firedRef.current = true;
-            onExpire?.();
+            // 状態更新関数の内側で他コンポーネントのsetStateを呼ばないよう次フレームへ
+            setTimeout(() => onExpire?.(), 0);
           }
           return 0;
         }

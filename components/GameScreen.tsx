@@ -1,12 +1,16 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { Examiner, Task, TaskAnswer } from "@/types/game";
+import type { Examiner, Task, TaskAnswer, VoiceMetrics } from "@/types/game";
 import { clip } from "@/lib/utils";
+import { KEYWORDS } from "@/lib/mockData";
+import { countAny } from "@/lib/score";
+import { EMPTY_METRICS, VoiceMeter, mergeMetrics } from "@/lib/voice";
 import { ActionButton, Panel, SectionLabel } from "./ui";
 import { CameraWindow } from "./CameraWindow";
 import { TimerBar } from "./TimerBar";
 import { ExaminerPanel } from "./ExaminerPanel";
+import { HumannessLog, type LiveLogState } from "./HumannessLog";
 
 type SpeechRec = {
   lang: string;
@@ -34,11 +38,14 @@ export function GameScreen({
   hasCamera: boolean;
   hasMic: boolean;
   onSnapshot: (dataUrl: string) => void;
-  onComplete: (answers: TaskAnswer[]) => void;
+  onComplete: (answers: TaskAnswer[], voiceMetrics: VoiceMetrics) => void;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const recRef = useRef<SpeechRec | null>(null);
   const autoRanRef = useRef(false);
+  const meterRef = useRef<VoiceMeter | null>(null);
+  const taskMetricsRef = useRef<VoiceMetrics[]>([]);
+  const textRef = useRef("");
 
   const [index, setIndex] = useState(0);
   const [text, setText] = useState("");
@@ -60,12 +67,44 @@ export function GameScreen({
     }
   }, [stream]);
 
+  // 音声メーター（マイク使用時）
+  useEffect(() => {
+    if (!hasMic || !stream) return;
+    const meter = new VoiceMeter(stream);
+    meter.start();
+    meterRef.current = meter;
+    return () => {
+      meter.dispose();
+      meterRef.current = null;
+    };
+  }, [hasMic, stream]);
+
+  useEffect(() => {
+    textRef.current = text;
+  }, [text]);
+
   // reset per task
   useEffect(() => {
     setText("");
+    textRef.current = "";
     setComment(null);
     setRunning(true);
+    meterRef.current?.reset();
   }, [index]);
+
+  const getLiveState = (): LiveLogState => {
+    const t = textRef.current;
+    const live = meterRef.current?.liveState();
+    return {
+      textLen: t.length,
+      listening,
+      volume: live?.volume ?? 0,
+      speaking: live?.speaking ?? false,
+      humanHits: countAny(t, KEYWORDS.humanLike),
+      aiHits: countAny(t, KEYWORDS.aiLike),
+      imperfectHits: countAny(t, KEYWORDS.imperfect),
+    };
+  };
 
   const takeSnapshot = () => {
     const v = videoRef.current;
@@ -152,6 +191,11 @@ export function GameScreen({
     setRunning(false);
     recRef.current?.stop();
 
+    // この認証の音声メトリクスを確定
+    taskMetricsRef.current.push(
+      meterRef.current ? meterRef.current.snapshot() : { ...EMPTY_METRICS }
+    );
+
     const userText = clip(text.trim(), 500);
     let partialScore = 12;
     let cmt = "回答を受理しました。";
@@ -185,7 +229,8 @@ export function GameScreen({
     setSubmitting(false);
 
     if (isLast) {
-      setTimeout(() => onComplete(nextAnswers), 1100);
+      const metrics = mergeMetrics(taskMetricsRef.current);
+      setTimeout(() => onComplete(nextAnswers, metrics), 1100);
     }
   };
 
@@ -326,6 +371,10 @@ export function GameScreen({
             )}
           </div>
         </Panel>
+      </div>
+
+      <div className="mt-4">
+        <HumannessLog active={running} resetKey={task.id} getState={getLiveState} />
       </div>
     </div>
   );

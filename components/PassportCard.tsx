@@ -1,6 +1,7 @@
 "use client";
 
 import { RANK_TITLE } from "@/lib/score";
+import { passportStamps } from "@/lib/passport";
 import { formatDateTime } from "@/lib/utils";
 import type { GameResult } from "@/types/game";
 
@@ -13,6 +14,7 @@ export function PassportCard({
 }) {
   const approved = result.approved;
   const stampColor = approved ? "var(--stamp-green)" : "var(--stamp-red)";
+  const subStamps = passportStamps(result).slice(1);
 
   return (
     <div className="relative overflow-hidden rounded-md border-2 border-[var(--accent)] bg-gradient-to-br from-[#0b1322] to-[#05070d] p-4 shadow-[0_0_30px_rgba(56,189,248,0.15)]">
@@ -82,6 +84,24 @@ export function PassportCard({
             <div className="font-mono text-[9px]">{approved ? "入国許可" : "入国拒否"}</div>
           </div>
         </div>
+
+        {subStamps.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1.5 border-t border-[var(--accent)]/20 pt-2">
+            {subStamps.map((s, i) => (
+              <span
+                key={i}
+                className="stamp select-none px-2 py-0.5 text-center"
+                style={{
+                  color: s.approve ? "var(--stamp-green)" : "var(--stamp-red)",
+                  transform: `rotate(${i % 2 === 0 ? -3 : 3}deg)`,
+                }}
+              >
+                <span className="block text-[10px] font-bold leading-none">{s.text}</span>
+                <span className="font-mono text-[8px]">{s.sub}</span>
+              </span>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

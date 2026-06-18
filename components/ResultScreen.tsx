@@ -72,6 +72,29 @@ export function ResultScreen({
         </div>
       </div>
 
+      {/* rejection reasons */}
+      {!approved && result.rejectionReasons && result.rejectionReasons.length > 0 && (
+        <div className="mt-4 rounded-md border border-[var(--danger)]/50 bg-[var(--danger)]/5 p-4">
+          <div className="flex items-center gap-2">
+            <span className="text-[var(--danger)]">⛔</span>
+            <span className="font-title text-sm uppercase tracking-wider text-[var(--danger)]">
+              入国拒否理由
+            </span>
+          </div>
+          <ul className="mt-2 space-y-1.5">
+            {result.rejectionReasons.map((r, i) => (
+              <li
+                key={i}
+                className="flex gap-2 font-mono text-[13px] leading-relaxed text-[var(--text)]/90"
+              >
+                <span className="text-[var(--danger)]">{String(i + 1).padStart(2, "0")}</span>
+                {r}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {/* scores */}
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
         <Panel>
@@ -134,6 +157,33 @@ export function ResultScreen({
         </div>
       </Panel>
 
+      {/* voice analysis */}
+      {result.voiceMetrics && result.voiceMetrics.spoke && (
+        <Panel className="mt-4">
+          <SectionLabel>音声解析 / VOICE ANALYSIS</SectionLabel>
+          <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <VoiceStat label="平均音量" value={`${result.voiceMetrics.avgVolume}%`} />
+            <VoiceStat label="声の揺れ" value={`${result.voiceMetrics.volumeVariation}%`} />
+            <VoiceStat
+              label="話し始め"
+              value={
+                result.voiceMetrics.firstSpeechDelayMs >= 0
+                  ? `${(result.voiceMetrics.firstSpeechDelayMs / 1000).toFixed(1)}s`
+                  : "—"
+              }
+            />
+            <VoiceStat
+              label="叫び判定"
+              value={result.voiceMetrics.shout ? "検出" : "なし"}
+              tone={result.voiceMetrics.shout ? "warn" : "default"}
+            />
+          </div>
+          <p className="mt-2 font-mono text-[11px] text-[var(--sub)]">
+            ※ マイク音声はブラウザ内で特徴量だけ計測し、録音は保存していません。
+          </p>
+        </Panel>
+      )}
+
       {/* after story */}
       <Panel className="mt-4" bracketed>
         <SectionLabel>{approved ? "AFTER — 人間界帰還" : "AFTER — AI世界送還"}</SectionLabel>
@@ -166,6 +216,28 @@ export function ResultScreen({
           </ActionButton>
           <ActionButton onClick={onRetry}>もう一度認証を受ける</ActionButton>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function VoiceStat({
+  label,
+  value,
+  tone = "default",
+}: {
+  label: string;
+  value: string;
+  tone?: "default" | "warn";
+}) {
+  return (
+    <div className="rounded-sm border border-[var(--border)] bg-black/30 p-2.5 text-center">
+      <div className="font-mono text-[10px] text-[var(--sub)]">{label}</div>
+      <div
+        className="font-title text-base"
+        style={{ color: tone === "warn" ? "var(--warn)" : "var(--accent)" }}
+      >
+        {value}
       </div>
     </div>
   );

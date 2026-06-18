@@ -1,6 +1,28 @@
 import type { GameResult } from "@/types/game";
 import { RANK_TITLE } from "./score";
 
+export type Stamp = { text: string; sub: string; approve: boolean };
+
+/** 結果のシグナルから審査スタンプ群を組み立てる（メイン＋サブ） */
+export function passportStamps(result: GameResult): Stamp[] {
+  const stamps: Stamp[] = [
+    result.approved
+      ? { text: "HUMAN APPROVED", sub: "入国許可", approve: true }
+      : { text: "AI SUSPECT", sub: "入国拒否", approve: false },
+  ];
+  const blob = [...result.goodPoints, result.examinerComment].join(" ");
+  if (result.approved) stamps.push({ text: "BORDER PASSED", sub: "通過", approve: true });
+  if (result.aiSuspicion >= 50)
+    stamps.push({ text: "AI SUSPECT", sub: "AI疑惑あり", approve: false });
+  if (/疲労|生活|残業|眠/.test(blob))
+    stamps.push({ text: "FATIGUE OK", sub: "疲労感確認済", approve: true });
+  if (result.voiceMetrics?.shout)
+    stamps.push({ text: "SHOUT", sub: "叫び検出", approve: true });
+  // 重複排除して最大3個
+  const seen = new Set<string>();
+  return stamps.filter((s) => (seen.has(s.text) ? false : (seen.add(s.text), true))).slice(0, 3);
+}
+
 function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
   ctx.beginPath();
   ctx.moveTo(x + r, y);
@@ -154,6 +176,30 @@ export async function downloadPassport(result: GameResult, snapshot?: string) {
   ctx.font = "12px 'JetBrains Mono', monospace";
   ctx.fillText(result.approved ? "入国許可" : "入国拒否", 0, 36);
   ctx.restore();
+
+  // secondary stamps（メイン以外を小さく押す）
+  const subs = passportStamps(result).slice(1);
+  subs.forEach((s, idx) => {
+    const bx = 460 + idx * 240;
+    const by = H - 70;
+    ctx.save();
+    ctx.translate(bx, by);
+    ctx.rotate(((idx % 2 === 0 ? -6 : 5) * Math.PI) / 180);
+    const c = s.approve ? "#16a34a" : "#ef4444";
+    ctx.strokeStyle = c;
+    ctx.fillStyle = c;
+    ctx.lineWidth = 3;
+    const w = 210;
+    const h = 46;
+    ctx.strokeRect(-w / 2, -h / 2, w, h);
+    ctx.strokeRect(-w / 2 + 4, -h / 2 + 4, w - 8, h - 8);
+    ctx.textAlign = "center";
+    ctx.font = "700 20px Orbitron, sans-serif";
+    ctx.fillText(s.text, 0, -1);
+    ctx.font = "11px 'JetBrains Mono', monospace";
+    ctx.fillText(s.sub, 0, 16);
+    ctx.restore();
+  });
 
   const link = document.createElement("a");
   link.download = `border-passport-${result.sessionId}.png`;
