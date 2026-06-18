@@ -8,9 +8,9 @@ type ChatResult = { ok: true; data: unknown } | { ok: false };
 
 export async function chatJSON(system: string, user: string): Promise<ChatResult> {
   if (!HAS_OPENAI) return { ok: false };
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 12000);
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 12000);
     const res = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -28,7 +28,6 @@ export async function chatJSON(system: string, user: string): Promise<ChatResult
       }),
       signal: controller.signal,
     });
-    clearTimeout(timeout);
     if (!res.ok) return { ok: false };
     const json = await res.json();
     const content = json?.choices?.[0]?.message?.content;
@@ -36,5 +35,7 @@ export async function chatJSON(system: string, user: string): Promise<ChatResult
     return { ok: true, data: JSON.parse(content) };
   } catch {
     return { ok: false };
+  } finally {
+    clearTimeout(timeout);
   }
 }

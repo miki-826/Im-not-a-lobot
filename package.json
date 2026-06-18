@@ -5,13 +5,14 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "verify:hackathon": "node scripts/verify-hackathon.mjs",
     "start": "next start",
     "lint": "next lint",
     "gen:image": "node gen-image.mjs",
     "gen:all": "node gen-all.mjs"
   },
   "dependencies": {
-    "next": "15.5.7",
+    "next": "15.5.18",
     "react": "19.2.0",
     "react-dom": "19.2.0"
   },

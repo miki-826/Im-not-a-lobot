@@ -29,3 +29,13 @@ export function formatDateTime(iso: string) {
 export function clip(text: string, max = 500) {
   return text.length > max ? text.slice(0, max) : text;
 }
+
+export function safeString(value: unknown, max = 500) {
+  return clip(typeof value === "string" ? value : "", max);
+}
+
+export function clampNumber(value: unknown, min: number, max: number, fallback = min) {
+  const parsed = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.max(min, Math.min(max, parsed));
+}
