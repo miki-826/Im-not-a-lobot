@@ -1,7 +1,8 @@
 import type { VoiceMetrics } from "@/types/game";
 
-const SPEECH_THRESHOLD = 6; // これ以上を「発話」とみなす音量(0-100)
-const SHOUT_THRESHOLD = 55; // これ以上のピークを「叫び」とみなす
+const BASE_SPEECH_THRESHOLD = 6; // 発話とみなす最低音量(0-100)。環境ノイズで自動的に引き上げる
+const SHOUT_THRESHOLD = 60; // これ以上のピークを「叫び」とみなす
+const CALIB_FRAMES = 8; // 開始直後の数フレームで環境ノイズ(無音時の音量)を測る
 
 export const EMPTY_METRICS: VoiceMetrics = {
   avgVolume: 0,
@@ -31,6 +32,9 @@ export class VoiceMeter {
   private firstSpeechAt = -1;
   private peak = 0;
   private live = 0;
+  private calibSum = 0;
+  private calibCount = 0;
+  private speechThreshold = BASE_SPEECH_THRESHOLD;
 
   constructor(private stream: MediaStream) {}
 
@@ -62,6 +66,9 @@ export class VoiceMeter {
     this.startedAt = performance.now();
     this.firstSpeechAt = -1;
     this.peak = 0;
+    this.calibSum = 0;
+    this.calibCount = 0;
+    this.speechThreshold = BASE_SPEECH_THRESHOLD;
   }
 
   private tick = () => {
@@ -75,9 +82,23 @@ export class VoiceMeter {
     const rms = Math.sqrt(sum / this.buf.length);
     const vol = Math.min(100, rms * 240); // 0-100へスケール
     this.live = vol;
+
+    // 開始直後の数フレームで環境ノイズを測り、しきい値を環境に合わせる
+    if (this.calibCount < CALIB_FRAMES) {
+      this.calibSum += vol;
+      this.calibCount += 1;
+      if (this.calibCount === CALIB_FRAMES) {
+        const ambient = this.calibSum / CALIB_FRAMES;
+        // 環境ノイズの1.8倍か基準値の高い方。常識的な範囲にclamp
+        this.speechThreshold = Math.min(35, Math.max(BASE_SPEECH_THRESHOLD, ambient * 1.8));
+      }
+      this.raf = requestAnimationFrame(this.tick);
+      return; // 較正中は集計に含めない
+    }
+
     this.volumes.push(vol);
     this.totalFrames += 1;
-    if (vol < SPEECH_THRESHOLD) {
+    if (vol < this.speechThreshold) {
       this.silentFrames += 1;
     } else if (this.firstSpeechAt < 0) {
       this.firstSpeechAt = performance.now();
@@ -88,7 +109,7 @@ export class VoiceMeter {
 
   /** ログ表示用の現在値 */
   liveState() {
-    const silentRun = this.live < SPEECH_THRESHOLD;
+    const silentRun = this.live < this.speechThreshold;
     return { volume: Math.round(this.live), speaking: !silentRun };
   }
 

@@ -46,6 +46,7 @@ export function GameScreen({
   const meterRef = useRef<VoiceMeter | null>(null);
   const taskMetricsRef = useRef<VoiceMetrics[]>([]);
   const textRef = useRef("");
+  const submittingRef = useRef(false);
 
   const [index, setIndex] = useState(0);
   const [text, setText] = useState("");
@@ -98,6 +99,8 @@ export function GameScreen({
     return {
       textLen: t.length,
       micActive: hasMic && !!meterRef.current,
+      cameraActive: hasCamera && !!stream,
+      cameraSubmitted: !!snapshot,
       volume: live?.volume ?? 0,
       speaking: live?.speaking ?? false,
       humanHits: countAny(t, KEYWORDS.humanLike),
@@ -186,7 +189,8 @@ export function GameScreen({
   }, [index, hasCamera, hasMic, stream]);
 
   const goNext = async () => {
-    if (submitting) return;
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setSubmitting(true);
     setRunning(false);
     recRef.current?.stop();
@@ -196,7 +200,8 @@ export function GameScreen({
       meterRef.current ? meterRef.current.snapshot() : { ...EMPTY_METRICS }
     );
 
-    const userText = clip(text.trim(), 500);
+    // textRefを使う（タイマー時間切れ等のstaleクロージャでも最新入力を拾う）
+    const userText = clip(textRef.current.trim(), 500);
     let partialScore = 12;
     let cmt = "回答を受理しました。";
     try {
@@ -227,6 +232,7 @@ export function GameScreen({
     setAnswers(nextAnswers);
     setComment(cmt);
     setSubmitting(false);
+    submittingRef.current = false;
 
     if (isLast) {
       const metrics = mergeMetrics(taskMetricsRef.current);
@@ -316,7 +322,10 @@ export function GameScreen({
             seconds={task.timeLimitSec}
             running={running}
             resetKey={task.id}
-            onExpire={() => setRunning(false)}
+            onExpire={() => {
+              // 時間切れ → 入力途中でも自動で確定（入国審査らしさ）
+              if (!submittingRef.current && !comment) goNext();
+            }}
           />
 
           <div>

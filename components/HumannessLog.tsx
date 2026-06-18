@@ -5,6 +5,8 @@ import { useEffect, useRef, useState } from "react";
 export type LiveLogState = {
   textLen: number;
   micActive: boolean; // マイク計測が動作中か（音声認識の有無とは別）
+  cameraActive: boolean; // カメラ映像が来ているか
+  cameraSubmitted: boolean; // 顔の静止画が提出されたか
   volume: number; // 0-100 live
   speaking: boolean;
   humanHits: number;
@@ -59,7 +61,10 @@ export function HumannessLog({
         const cleanliness =
           s.imperfectHits >= 2 ? "低" : s.imperfectHits === 1 ? "中" : s.textLen > 30 ? "高" : "—";
         const cat = k % 5;
-        if (cat === 0) line = `表情ノイズ検出中... [${bar(38 + ((k * 17) % 50))}]`;
+        if (cat === 0)
+          line = s.cameraActive
+            ? `カメラ入力シグナル：${s.cameraSubmitted ? "顔フレーム提出済" : "受信中（提出待ち）"}`
+            : `カメラ入力：未接続（提出シグナルなし）`;
         else if (cat === 1)
           line = s.micActive
             ? `音声レベル ${String(s.volume).padStart(2, " ")}%  [${bar(s.volume)}] ${s.speaking ? "発話検出" : "無音"}`
